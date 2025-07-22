@@ -1,4 +1,3 @@
-// src/pages/SentRequestsPage.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -16,7 +15,19 @@ export default function SentRequestsPage() {
           `${import.meta.env.VITE_API_URL}/requests/sent`,
           { withCredentials: true }
         );
-        if (isMounted) setSent(data);
+        if (isMounted) {
+          console.log('Sent requests data:', data);
+          console.log(
+            'Receivers:',
+            data.map((r, index) => ({
+              index,
+              id: r._id,
+              receiver: r.receiver || 'MISSING RECEIVER',
+              hasProfilePicture: r.receiver ? !!r.receiver.profilePicture : false,
+            }))
+          );
+          setSent(data);
+        }
       } catch {
         toast.error("Could not load sent requests");
       } finally {
@@ -28,13 +39,17 @@ export default function SentRequestsPage() {
 
   // Cancel a pending request
   const handleCancel = async (receiverId) => {
+    if (!receiverId) {
+      toast.error("Cannot cancel request: Invalid receiver");
+      return;
+    }
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_URL}/request/cancel/${receiverId}`,
         { withCredentials: true }
       );
       toast.success("Request cancelled");
-      setSent((prev) => prev.filter((r) => r.receiver._id !== receiverId));
+      setSent((prev) => prev.filter((r) => r.receiver?._id !== receiverId));
     } catch (err) {
       toast.error(err.response?.data || "Failed to cancel");
     }
@@ -60,29 +75,37 @@ export default function SentRequestsPage() {
               key={r._id}
               className="bg-white/20 p-4 rounded-2xl flex items-center gap-4"
             >
-              <img
-                src={r.receiver.profilePicture}
-                alt={`${r.receiver.firstName} ${r.receiver.lastName}`}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <p className="font-semibold">
-                  {r.receiver.firstName} {r.receiver.lastName}
-                </p>
-                {r.status === "pending" && (
-                  <button
-                    onClick={() => handleCancel(r.receiver._id)}
-                    className="mt-1 text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    Cancel ❌
-                  </button>
-                )}
-                {r.status !== "pending" && (
-                  <span className="text-xs text-gray-200">
-                    {r.status.toUpperCase()}
-                  </span>
-                )}
-              </div>
+              {r.receiver ? (
+                <>
+                  <img
+                    src={r.receiver.profilePicture || '/default-profile.png'}
+                    alt={`${r.receiver.firstName || 'Unknown'} ${r.receiver.lastName || 'User'}`}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="font-semibold">
+                      {r.receiver.firstName || 'Unknown'} {r.receiver.lastName || 'User'}
+                    </p>
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => handleCancel(r.receiver._id)}
+                        className="mt-1 text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                      >
+                        Cancel ❌
+                      </button>
+                    )}
+                    {r.status !== "pending" && (
+                      <span className="text-xs text-gray-200">
+                        {r.status.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-red-300">
+                  Invalid request: Receiver information missing
+                </div>
+              )}
             </li>
           ))}
         </ul>

@@ -22,6 +22,10 @@ export default function MatchesPage() {
       } finally {
         if (isMounted) setLoading(false);
       }
+console.log('Matches data:', data);
+console.log('Others:', data.map(m => ({ id: m._id, other: m.other })));
+
+
     })();
 
     return () => (isMounted = false);

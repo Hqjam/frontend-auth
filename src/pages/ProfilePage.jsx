@@ -11,14 +11,15 @@ export default function ProfilePage() {
     about: "",
     profilePicture: "",
   });
+  const [formData, setFormData] = useState(new FormData()); // State to hold form data
 
-  /* ---------- load current profile ---------- */
+  // Load current profile
   useEffect(() => {
     (async () => {
       try {
         const { data } = await axios.get(
-          `${import.meta.env.VITE_API_URL}/profile/view`,
-          { withCredentials: true }
+            `${import.meta.env.VITE_API_URL}/profile/view`,
+            { withCredentials: true }
         );
         setProfile(data);
       } catch (err) {
@@ -27,49 +28,42 @@ export default function ProfilePage() {
     })();
   }, []);
 
-  /* ---------- handle text fields ---------- */
+  // Handle text fields
   const handleChange = (e) =>
     setProfile({ ...profile, [e.target.name]: e.target.value });
 
-  /* ---------- handle file upload ---------- */
-  const handleFileChange = async (e) => {
+  // Handle file upload
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const form = new FormData();
-    form.append("profilePicture", file);
-
-    // optional: send any other changed fields at the same time
-    form.append("firstName", profile.firstName);
-    form.append("lastName", profile.lastName);
-    form.append("age", profile.age);
-    form.append("about", profile.about);
-
-    try {
-      const { data } = await axios.patch(
-        `${import.meta.env.VITE_API_URL}/profile/edit`,
-        form,
-        { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setProfile(data);
-      toast.success("Profile updated!");
-    } catch (err) {
-      toast.error(err.response?.data || "Upload failed");
-    }
+    const newFormData = new FormData();
+    newFormData.append("profilePicture", file);
+    setFormData(newFormData); // Update state with new FormData
   };
 
-  /* ---------- handle text-only save ---------- */
+  // Handle text-only save
   const handleSave = async () => {
     try {
-      const form = new FormData();
-      Object.keys(profile).forEach((k) => form.append(k, profile[k]));
-      const { data } = await axios.patch(
-        `${import.meta.env.VITE_API_URL}/profile/edit`,
-        form,
-        { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setProfile(data);
-      toast.success("Profile updated!");
+      if (formData.get("profilePicture")) {
+        // If there's a file, send the form data including the file
+        const response = await axios.patch(
+          `${import.meta.env.VITE_API_URL}/profile/edit`,
+          formData,
+          { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } }
+        );
+        setProfile(response.data);
+        toast.success("Profile updated!");
+      } else {
+        // If there's no file, send only the text updates
+        const response = await axios.patch(
+          `${import.meta.env.VITE_API_URL}/profile/edit`,
+          formData,
+          { withCredentials: true }
+        );
+        setProfile(response.data);
+        toast.success("Profile updated!");
+      }
     } catch (err) {
       toast.error(err.response?.data || "Update failed");
     }
@@ -83,10 +77,10 @@ export default function ProfilePage() {
         {/* Preview */}
         {profile.profilePicture && (
           <img
-            src={profile.profilePicture}
-            alt="preview"
-            className="w-28 h-28 rounded-full object-cover mx-auto"
-          />
+              src={profile.profilePicture}
+              alt="preview"
+              className="w-28 h-28 rounded-full object-cover mx-auto"
+            />
         )}
 
         {/* Text fields */}

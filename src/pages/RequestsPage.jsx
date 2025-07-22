@@ -14,20 +14,32 @@ export default function RequestsPage() {
           `${import.meta.env.VITE_API_URL}/requests/pending`,
           { withCredentials: true }
         );
+        console.log('Requests data:', data);
+        console.log(
+          'Senders:',
+          data.map((r, index) => ({
+            index,
+            id: r._id,
+            sender: r.sender || 'MISSING SENDER',
+            hasProfilePicture: r.sender ? !!r.sender.profilePicture : false,
+          }))
+        );
         setRequests(data);
       } catch (err) {
         toast.error("Could not load requests");
+        console.error('Error fetching requests:', err);
       }
     })();
   }, []);
 
-  // RequestsPage.jsx
   const handleAccept = async (requestDoc) => {
+    if (!requestDoc.sender?._id) {
+      toast.error("Cannot accept request: Invalid sender");
+      return;
+    }
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/request/accept/${
-          requestDoc.sender._id
-        }`,
+        `${import.meta.env.VITE_API_URL}/request/accept/${requestDoc.sender._id}`,
         {},
         { withCredentials: true }
       );
@@ -39,11 +51,13 @@ export default function RequestsPage() {
   };
 
   const handleReject = async (requestDoc) => {
+    if (!requestDoc.sender?._id) {
+      toast.error("Cannot reject request: Invalid sender");
+      return;
+    }
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/request/reject/${
-          requestDoc.sender._id
-        }`,
+        `${import.meta.env.VITE_API_URL}/request/reject/${requestDoc.sender._id}`,
         {},
         { withCredentials: true }
       );
@@ -65,27 +79,38 @@ export default function RequestsPage() {
           {requests.map((r) => (
             <li
               key={r._id}
-              className="bg-white/20 p-4 rounded-2xl flex items-center gap-4">
-              <img
-                src={r.sender.profilePicture}
-                alt={r.sender.firstName}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <p className="font-semibold">
-                  {r.sender.firstName} {r.sender.lastName}
-                </p>
-                <button
-                  onClick={() => handleAccept(r)}
-                  className="bg-green-400 hover:bg-green-500 p-2 rounded-full">
-                  Accept 💌
-                </button>
-                <button
-                  onClick={() => handleReject(r)}
-                  className="bg-red-400 hover:bg-red-500 p-2 rounded-full">
-                  Reject ❌
-                </button>
-              </div>
+              className="bg-white/20 p-4 rounded-2xl flex items-center gap-4"
+            >
+              {r.sender ? (
+                <>
+                  <img
+                    src={r.sender.profilePicture || '/default-profile.png'} // Fallback image
+                    alt={`${r.sender.firstName || 'Unknown'} ${r.sender.lastName || 'User'}`}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="font-semibold">
+                      {r.sender.firstName || 'Unknown'} {r.sender.lastName || 'User'}
+                    </p>
+                    <button
+                      onClick={() => handleAccept(r)}
+                      className="bg-green-400 hover:bg-green-500 p-2 rounded-full"
+                    >
+                      Accept 💌
+                    </button>
+                    <button
+                      onClick={() => handleReject(r)}
+                      className="bg-red-400 hover:bg-red-500 p-2 rounded-full"
+                    >
+                      Reject ❌
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-red-300">
+                  Invalid request: Sender information missing
+                </div>
+              )}
             </li>
           ))}
         </ul>
